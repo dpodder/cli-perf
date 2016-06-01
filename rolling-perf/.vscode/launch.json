@@ -1,0 +1,39 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": false,
+            "externalConsole": false,
+            "program": "${workspaceRoot}/rolling-perf.py",
+            "args": [
+                "--branch", "rel/1.0.0"
+            ],
+            "pythonPath": "py",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ]
+        },
+        {
+            "name": "Python (verbose)",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": false,
+            "externalConsole": false,
+            "program": "${workspaceRoot}/rolling-perf.py",
+            "args": [
+                "--branch", "rel/1.0.0", "--verbose"
+            ],
+            "pythonPath": "py",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ]
+        }
+    ]
+}
