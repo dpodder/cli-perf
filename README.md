@@ -10,38 +10,46 @@ Setup Steps
 0. Install Visual Studio 2015 (required for the CLI build; the Community Edition
    is good enough)
 
-1. Create a base directory (example here; you can put it anywhere)
+1. Install chocolatey (must run elevated):
+
+    ```batch
+    cd /d %USERPROFILE%
+    @powershell -NoProfile -ExecutionPolicy Bypass -Command "iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'))" && SET PATH=%PATH%;%ALLUSERSPROFILE%\chocolatey\bin
+    ```
+
+2. Install required tools (must run elevated; best to start a clean shell):
+
+    ```batch
+    cd /d %USERPROFILE%
+    choco install git python2 python microsoft-build-tools cmake.portable -y
+    ```
+
+3. Set up dependencies (must run elevated; best to start a clean shell):
+
+    ```batch
+    cd /d %USERPROFILE%
+    setx /m PATH "%PATH%;C:\Program Files (x86)\MSBuild\14.0\Bin"
+    ```
+
+4. Create a base directory--example only here, `C:\DotNet` can be replaced with
+   any other path on the system. (Best to start this from a clean,
+   *non*-elevated shell.)
 
     ```batch
     mkdir C:\DotNet
     cd /d C:\DotNet
     ```
 
-2. Clone this repo
+5. Clone this repo
 
     ```batch
     git clone https://github.com/dpodder/cli-perf.git
     ```
 
-3. Install chocolatey (must run elevated):
+Running the Script
+==================
 
-    ```batch
-    @powershell -NoProfile -ExecutionPolicy Bypass -Command "iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'))" && SET PATH=%PATH%;%ALLUSERSPROFILE%\chocolatey\bin
-    ```
-
-4. Install required tools (must run elevated):
-
-    ```batch
-    choco install git -y
-    choco install python2 -y
-    choco install microsoft-build-tools -y
-    choco install cmake.portable -y
-    setx /m PATH "%PATH%;C:\Program Files (x86)\MSBuild\14.0\Bin"
-    ```
-
-5. Launch the rolling script (assuming `C:\DotNet` is the base directory):
-
-    ```batch
-    cd /d C:\DotNet\cli-perf\rolling-perf
-    py rolling-perf.py --branch rel/1.0.0 --dir C:\DotNet\working-dir
-    ```
+```batch
+cd /d C:\DotNet\cli-perf\rolling-perf
+py rolling-perf.py --branch rel/1.0.0 --dir C:\DotNet\working-dir
+```
