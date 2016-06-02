@@ -9,7 +9,7 @@
             "externalConsole": false,
             "program": "${workspaceRoot}/rolling-perf.py",
             "args": [
-                "--branch", "rel/1.0.0"
+                "--branch", "rel/1.0.0", "--dir", "C:\\temp\\rolling-perf"
             ],
             "pythonPath": "py",
             "debugOptions": [
@@ -26,7 +26,7 @@
             "externalConsole": false,
             "program": "${workspaceRoot}/rolling-perf.py",
             "args": [
-                "--branch", "rel/1.0.0", "--verbose"
+                "--branch", "rel/1.0.0", "--dir", "C:\\temp\\rolling-perf", "--verbose"
             ],
             "pythonPath": "py",
             "debugOptions": [
