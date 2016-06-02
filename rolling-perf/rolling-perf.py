@@ -108,12 +108,15 @@ def GetDotNetRuntimeId():
     artifacts_path = os.path.join(cli_repo.path, 'artifacts')
     dir_list = os.listdir(artifacts_path)
     if len(dir_list) != 2:
-        raise RuntimeError("Failed to detect dotnet cli runid: not sure which of {} to use".format(
+        raise FatalError("Failed to detect dotnet cli runid: not sure which of {} to use".format(
             ','.join(dir_list)
         ))
     for item in os.listdir(artifacts_path):
         if item != 'tests':
             return item
+
+class FatalError(Exception):
+    pass
 
 class GitRepo:
     url = None
@@ -217,6 +220,13 @@ def init_logging():
     logging.getLogger('script').addHandler(fh)
     logging.getLogger('script').setLevel(logging.INFO)
 
+def check_dependencies():
+    logging.getLogger('script').info("Making sure msbuild exists...")
+    try:
+        RunCommand(['msbuild', '-version'])
+    except:
+        raise FatalError("Can't find msbuild, please make sure it's installed and on PATH")
+
 def refresh_repos():
     cli_repo.make_clean()
     cli_repo.sync(script_args.branch)
@@ -244,9 +254,6 @@ def check_history(commit):
 
 def process_submission(sha1):
     record = GetSubmissionRecord()
-
-    logging.getLogger('script').info("Making sure msbuild exists...")
-    RunCommand(['msbuild', '-version'])
 
     logging.getLogger('script').info("Building the cli repo...")
     with PushDir(cli_repo.path):
@@ -294,20 +301,30 @@ def commit_to_history(commit, record):
     save_datastore()
 
 def main():
-    process_arguments()
-    init_logging()
+    try:
+        process_arguments()
+        init_logging()
+        check_dependencies()
 
-    LogStartMessage('script')
-    logging.getLogger('script').info("Refreshing git repos to look for new commits...")
-    refresh_repos()
+        LogStartMessage('script')
+        logging.getLogger('script').info("Refreshing git repos to look for new commits...")
+        refresh_repos()
 
-    latest_sha1 = cli_repo.get_sha1()
-    if not check_history(latest_sha1):
-        logging.getLogger('script').info("Commit {} is new, kicking off submission...".format(latest_sha1))
-        submission = process_submission(latest_sha1)
-        commit_to_history(latest_sha1, submission)
-    else:
-        logging.getLogger('script').info("Commit {} is the latest and has already been processed.".format(latest_sha1))
+        latest_sha1 = cli_repo.get_sha1()
+        if not check_history(latest_sha1):
+            logging.getLogger('script').info("Commit {} is new, kicking off submission...".format(latest_sha1))
+            submission = process_submission(latest_sha1)
+            commit_to_history(latest_sha1, submission)
+        else:
+            logging.getLogger('script').info("Commit {} is the latest and has already been processed.".format(latest_sha1))
+
+    except FatalError as e:
+        logging.getLogger('script').error(e.message)
+        return 1
+
+    except Exception as e:
+        logging.getLogger('script').critical("Unhandled exception: {}".format(e))
+        raise
 
 if __name__ == '__main__':
     sys.exit(main())
