@@ -51,16 +51,17 @@ def RunCommand(cmdline, valid_exit_codes=[0], get_output=False, silent=False, su
         exe_log_file = exe_log_file.replace('.log', '.{}.log'.format(suffix))
 
     exe_logger = logging.getLogger(exe_name)
-    if len(exe_logger.handlers) == 0:
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO if script_args.verbose else logging.WARNING)
-        ch.setFormatter(logging.Formatter(fmt='%(levelname)s:%(name)s:%(message)s'))
-        exe_logger.addHandler(ch)
-        fh = logging.FileHandler(exe_log_file)
-        fh.setLevel(logging.INFO)
-        if suffix == None:
-            fh.setFormatter(logging.Formatter(fmt='%(levelname)s:%(name)s:%(message)s'))
-        exe_logger.addHandler(fh)
+    exe_logger.handlers = []
+    fh = logging.FileHandler(exe_log_file)
+    fh.setLevel(logging.INFO)
+    if suffix == None:
+        fh.setFormatter(logging.Formatter(fmt='%(levelname)s:%(name)s:%(message)s'))
+    exe_logger.addHandler(fh)
+    LogStartMessage(exe_name)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO if script_args.verbose else logging.WARNING)
+    ch.setFormatter(logging.Formatter(fmt='%(levelname)s:%(name)s:%(message)s'))
+    exe_logger.addHandler(ch)
 
     lines = []
     with open(os.devnull) as devnull:
