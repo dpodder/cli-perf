@@ -57,7 +57,8 @@ def RunCommand(cmdline, valid_exit_codes=[0], get_output=False, silent=False, su
     if suffix == None:
         fh.setFormatter(logging.Formatter(fmt='%(levelname)s:%(name)s:%(message)s'))
     exe_logger.addHandler(fh)
-    LogStartMessage(exe_name)
+    if suffix != None:
+        LogStartMessage(exe_name)
     ch = logging.StreamHandler()
     ch.setLevel(logging.INFO if script_args.verbose else logging.WARNING)
     ch.setFormatter(logging.Formatter(fmt='%(levelname)s:%(name)s:%(message)s'))
