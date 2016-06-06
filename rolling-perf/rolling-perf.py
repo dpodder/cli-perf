@@ -147,6 +147,12 @@ class GitRepo:
             RunCommand(['git', 'checkout', branch])
             RunCommand(['git', 'reset', '--hard', 'origin/' + branch])
 
+    def rewind(self, number_of_commits = 1):
+        if not isinstance(number_of_commits, int) or number_of_commits < 1:
+            raise TypeError("number_of_commits must be an integer >= 1")
+        with PushDir(self.path):
+            RunCommand(['git', 'checkout', 'HEAD~{}'.format(number_of_commits)])
+
     def get_sha1(self):
         with PushDir(self.path):
             return RunCommand(['git', 'rev-parse', 'HEAD'], get_output=True)[0].strip()
@@ -169,6 +175,13 @@ def process_arguments():
         '--verbose', '-v',
         help = "Enable verbose console output",
         action = 'store_true'
+    )
+    parser.add_argument(
+        '--look-back', '-n',
+        help = "Number of builds to backfill",
+        metavar = "N",
+        default = 1,
+        type = int
     )
 
     global script_args
@@ -311,13 +324,17 @@ def main():
         logging.getLogger('script').info("Refreshing git repos to look for new commits...")
         refresh_repos()
 
-        latest_sha1 = cli_repo.get_sha1()
-        if not check_history(latest_sha1):
-            logging.getLogger('script').info("Commit {} is new, kicking off submission...".format(latest_sha1))
-            submission = process_submission(latest_sha1)
-            commit_to_history(latest_sha1, submission)
-        else:
-            logging.getLogger('script').info("Commit {} is the latest and has already been processed.".format(latest_sha1))
+        for n in range(script_args.look_back):
+            latest_sha1 = cli_repo.get_sha1()
+            if not check_history(latest_sha1):
+                logging.getLogger('script').info("Commit {} is new, kicking off submission...".format(latest_sha1))
+                submission = process_submission(latest_sha1)
+                commit_to_history(latest_sha1, submission)
+                break
+            else:
+                logging.getLogger('script').info("Commit {} has already been processed.".format(latest_sha1))
+            if n+1 < script_args.look_back:
+                cli_repo.rewind()
 
     except FatalError as e:
         logging.getLogger('script').error(e.message)
