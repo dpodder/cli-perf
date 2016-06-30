@@ -103,7 +103,11 @@ def GetEmptyDirPath():
 def GetSubmissionRecord():
     return {
         'time': launch_time,
-        'time_as_str': str(datetime.datetime.fromtimestamp(launch_time))
+        'time_as_str': str(datetime.datetime.fromtimestamp(launch_time)),
+        'outcome': {
+            'build': 'pending',
+            'perfrun': 'pending'
+        }
     }
 
 def GetDotNetRuntimeId():
@@ -272,21 +276,33 @@ def process_submission(sha1):
 
     logging.getLogger('script').info("Building the cli repo...")
     with PushDir(cli_repo.path):
-        RunCommand([
-            'build.cmd',
-            '-Configuration', 'Release'
-        ], suffix='{}.build'.format(sha1))
+        try:
+            RunCommand([
+                'build.cmd',
+                '-Configuration', 'Release'
+            ], suffix='{}.build'.format(sha1))
+            record['outcome']['build'] = 'passed'
+        except subprocess.CalledProcessError as err:
+            logging.getLogger('script').error("Build failed, bailing...")
+            record['outcome']['build'] = 'failed'
+            return record
 
     logging.getLogger('script').info("Running the perf tests...")
     with PushDir(os.path.join(cli_repo.path, 'test', 'Performance')):
-        RunCommand([
-            sys.executable,
-            'run-perftests.py',
-            '--runid', sha1,
-            '--xunit-perf-path', xunitperf_repo.path,
-            '--verbose',
-            os.path.join(cli_repo.path, 'artifacts', GetDotNetRuntimeId(), 'stage2', 'dotnet')
-        ], suffix='{}.run-perftests'.format(sha1))
+        try:
+            RunCommand([
+                sys.executable,
+                'run-perftests.py',
+                '--runid', sha1,
+                '--xunit-perf-path', xunitperf_repo.path,
+                '--verbose',
+                os.path.join(cli_repo.path, 'artifacts', GetDotNetRuntimeId(), 'stage2', 'dotnet')
+            ], suffix='{}.run-perftests'.format(sha1))
+            record['outcome']['perfrun'] = 'passed'
+        except subprocess.CalledProcessError as err:
+            logging.getLogger('script').error("PerfRun failed, bailing...")
+            record['outcome']['perfrun'] = 'failed'
+            return record
 
         logging.getLogger('script').info("Publishing results...")
         job_result_dir = os.path.join(results_dir, 'new', sha1)
