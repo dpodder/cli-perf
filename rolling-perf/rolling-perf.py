@@ -257,6 +257,7 @@ def refresh_benchview_tools():
     benchview_tools_path = os.path.join(tools_dir, 'Microsoft.BenchView.JSONFormat')
     if os.path.exists(benchview_tools_path):
         shutil.rmtree(benchview_tools_path)
+
     RunCommand(['nuget','install', 'Microsoft.BenchView.JSONFormat', '-Source', 'http://benchviewtestfeed.azurewebsites.net/nuget', '-OutputDirectory', tools_dir, '-Prerelease', '-ExcludeVersion']);
 
 def refresh_repos():
