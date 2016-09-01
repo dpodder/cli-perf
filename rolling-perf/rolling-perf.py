@@ -158,6 +158,10 @@ class GitRepo:
         with PushDir(self.path):
             return RunCommand(['git', 'rev-parse', 'HEAD'], get_output=True)[0].strip()
 
+    def get_timestamp(self):
+        with PushDir(self.path):
+            return RunCommand(['git', 'log', '-1', '--pretty=%aI'], get_output=True)[0].strip()
+
 def process_arguments():
     parser = argparse.ArgumentParser(
         description = "Monitors for changes in the dotnet/cli repo and launches perf tests if changes are found."
@@ -327,13 +331,14 @@ def main():
 
         for n in range(script_args.look_back):
             latest_sha1 = cli_repo.get_sha1()
+            latest_timestamp = cli_repo.get_timestamp()
             if not check_history(latest_sha1):
-                logging.getLogger('script').info("Commit {} is new, kicking off submission...".format(latest_sha1))
+                logging.getLogger('script').info("Commit {} ({}) is new, kicking off submission...".format(latest_sha1, latest_timestamp))
                 submission = process_submission(latest_sha1)
                 commit_to_history(latest_sha1, submission)
                 break
             else:
-                logging.getLogger('script').info("Commit {} has already been processed.".format(latest_sha1))
+                logging.getLogger('script').info("Commit {} ({}) has already been processed.".format(latest_sha1, latest_timestamp))
             if n+1 < script_args.look_back:
                 cli_repo.rewind()
 
