@@ -158,7 +158,10 @@ class GitRepo:
 
     def get_timestamp(self):
         with PushDir(self.path):
-            return RunCommand(['git', 'log', '-1', '--pretty=%aI'], get_output=True)[0].strip()
+            unix_timestamp = int(RunCommand(['git', 'log', '-1', '--pretty=%at'], get_output=True)[0].strip())
+
+            # Convert to match RFC 3339, Section 5.6.
+            return datetime.datetime.utcfromtimestamp(unix_timestamp).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 def process_arguments():
     parser = argparse.ArgumentParser(
@@ -333,6 +336,27 @@ def commit_to_history(commit, record):
     datastore[commit] = record
     save_datastore()
 
+def upload_to_benchview(commit, timestamp, branch, record):
+    benchview_tools_dir = os.path.join(tools_dir, 'Microsoft.BenchView.JSONFormat', 'tools')
+    with PushDir('C:\\test'):
+        RunCommand(['py', '-3', os.path.join(benchview_tools_dir, 'submission-metadata.py'), '--name', 'dotnet cli rolling perf {}'.format(commit), '--user-email', 'jsokla@microsoft.com'])
+        RunCommand(['py', '-3', os.path.join(benchview_tools_dir, 'build.py'), '--branch', branch, '--number', commit,'--source-timestamp', timestamp, '--repository', cli_repo.url, '--type', 'rolling'])
+        RunCommand(['py', '-3', os.path.join(benchview_tools_dir, 'machinedata.py')])
+        # measurement.py isn't returning a failing error code
+        # RunCommand(['py', '-3', os.path.join(benchview_tools_dir, 'measurement.py'), 'xunit', 'FILENAME', '--better', 'desc', '--drop-first-value'])
+        # RunCommand(['py', '-3', os.path.join(benchview_tools_dir, 'submission.py'), 
+        #                                                                 'measurement.json', 
+        #                                                                 '--build', 'build.json', 
+        #                                                                 '--machine-data', 'machinedata.json', 
+        #                                                                 '--metadata', 'submission-metadata.json', 
+        #                                                                 '--group', 'dotnet cli', 
+        #                                                                 '--type', 'rolling', 
+        #                                                                 '--config-name', 'Release', 
+        #                                                                 '--config', 'csc', '/o', 
+        #                                                                 '--architecture', 'amd64', 
+        #                                                                 '--machinepool', 'perfsnake'
+        # ])
+
 def main():
     try:
         process_arguments()
@@ -352,6 +376,7 @@ def main():
             if not check_history(latest_sha1):
                 logging.getLogger('script').info("Commit {} ({}) is new, kicking off submission...".format(latest_sha1, latest_timestamp))
                 submission = process_submission(latest_sha1)
+                upload_to_benchview(latest_sha1, latest_timestamp, script_args.branch, submission)
                 commit_to_history(latest_sha1, submission)
                 break
             else:
