@@ -192,6 +192,9 @@ def process_arguments():
     global script_args
     script_args = parser.parse_args()
 
+    global tools_dir
+    tools_dir = os.path.join(script_args.working_directory, 'tools')
+
     global results_dir
     results_dir = os.path.join(script_args.working_directory, 'results')
 
@@ -245,6 +248,18 @@ def check_dependencies():
         RunCommand(['msbuild', '-version'])
     except:
         raise FatalError("Can't find msbuild, please make sure it's installed and on PATH")
+    
+    logging.getLogger('script').info("Making sure nuget exists...")
+    try:
+        RunCommand(['nuget'])
+    except:
+        raise FatalError("Can't find nuget, please make sure it's installed and on PATH")
+
+def refresh_benchview_tools():
+    benchview_tools_path = os.path.join(tools_dir, 'Microsoft.BenchView.JSONFormat')
+    if os.path.exists(benchview_tools_path):
+        shutil.rmtree(benchview_tools_path)
+    RunCommand(['nuget','install', 'Microsoft.BenchView.JSONFormat', '-Source', 'http://benchviewtestfeed.azurewebsites.net/nuget', '-OutputDirectory', tools_dir, '-Prerelease', '-ExcludeVersion']);
 
 def refresh_repos():
     cli_repo.make_clean()
@@ -326,6 +341,9 @@ def main():
         check_dependencies()
 
         LogStartMessage('script')
+        logging.getLogger('script').info("Refreshing benchview tools...")
+        refresh_benchview_tools()
+
         logging.getLogger('script').info("Refreshing git repos to look for new commits...")
         refresh_repos()
 

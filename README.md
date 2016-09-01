@@ -21,7 +21,7 @@ Setup Steps
 
     ```batch
     cd /d %USERPROFILE%
-    choco install git python2 python microsoft-build-tools cmake.portable -y
+    choco install git python2 python microsoft-build-tools cmake.portable nuget.commandline -y
     ```
 
 3. Set up dependencies (must run elevated; best to start a clean shell):
