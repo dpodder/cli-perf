@@ -20,7 +20,6 @@ datastore = None
 
 cli_repo = None
 xunitperf_repo = None
-empty_dir = None
 log_file = None
 store_path = None
 results_dir = None
@@ -94,12 +93,6 @@ def LogStartMessage(name):
     logging.getLogger(name).info(start_msg)
     logging.getLogger(name).info('-' * len(start_msg))
 
-def GetEmptyDirPath():
-    empty_dir_path = os.path.join(script_args.working_directory, 'empty')
-    if not os.path.exists(empty_dir_path):
-        os.makedirs(empty_dir_path)
-    return empty_dir_path
-
 def GetSubmissionRecord():
     return {
         'time': launch_time,
@@ -133,14 +126,19 @@ class GitRepo:
 
     def make_clean(self):
         if self.exists():
-            # Only robocopy can reliably delete long file paths on Windows
-            RunCommand(['robocopy', GetEmptyDirPath(), self.path, '/mir'], valid_exit_codes=[0,1,2,3], silent=True)
-            os.rmdir(self.path)
-        self.clone()
+            self.clean()
+        else:
+            self.clone()
+
+    def clean(self):
+        with PushDir(self.path):
+            RunCommand(['git', 'clean', '-xdf'])
 
     def clone(self):
-        if not os.path.exists(self.path):
-            RunCommand(['git', 'clone', self.url, self.path])
+        RunCommand(['git', 'clone', self.url, self.path])
+        with PushDir(self.path):
+            # Tell git that yes, we really are ok with long paths (required for cleaning after a build)
+            RunCommand(['git', 'config', 'core.longpaths', 'true'])
 
     def sync(self, branch):
         with PushDir(self.path):
