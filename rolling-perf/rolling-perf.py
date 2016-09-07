@@ -374,6 +374,7 @@ def upload_to_benchview(commit, timestamp, branch, xunit_xml_path):
                                                                         '--better', 'desc',
                                                                         '--drop-first-value'
                                                                         ])
+        submission_json = 'submission_{}.json'.format(commit)
         RunCommand(['py', os.path.join(benchview_tools_dir, 'submission.py'),
                                                                         'measurement.json',
                                                                         '--build', 'build.json',
@@ -384,10 +385,11 @@ def upload_to_benchview(commit, timestamp, branch, xunit_xml_path):
                                                                         '--config-name', 'Release',
                                                                         '--config', 'csc', '/o',
                                                                         '--architecture', 'amd64',
-                                                                        '--machinepool', 'perfsnake'
+                                                                        '--machinepool', 'perfsnake',
+                                                                        '--outfile', submission_json
                                                                         ])
         RunCommand(['py', os.path.join(benchview_tools_dir, 'upload.py'),
-                                                                        'submission.json',
+                                                                        submission_json,
                                                                         '--container', 'dotnetcli',
                                                                         '--sas-token', os.environ['SAS_TOKEN']
                                                                         ])
