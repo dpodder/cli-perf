@@ -23,6 +23,7 @@ xunitperf_repo = None
 log_file = None
 store_path = None
 results_dir = None
+benchview_dir = None
 
 launch_time = time.time()
 
@@ -199,6 +200,9 @@ def process_arguments():
     global results_dir
     results_dir = os.path.join(script_args.working_directory, 'results')
 
+    global benchview_dir
+    benchview_dir = os.path.join(script_args.working_directory, 'benchview')
+
     global store_path
     store_path = os.path.join(script_args.working_directory, 'store.json')
 
@@ -244,6 +248,10 @@ def init_logging():
     logging.getLogger('script').setLevel(logging.INFO)
 
 def check_dependencies():
+    logging.getLogger('script').info("Checking SAS_TOKEN environment variable is defined...")
+    if 'SAS_TOKEN' not in os.environ:
+        raise FatalError("SAS_TOKEN environment variable is not defined.")
+
     logging.getLogger('script').info("Making sure msbuild exists...")
     try:
         RunCommand(['msbuild', '-version'])
@@ -336,26 +344,40 @@ def commit_to_history(commit, record):
     datastore[commit] = record
     save_datastore()
 
-def upload_to_benchview(commit, timestamp, branch, record):
+def upload_to_benchview(commit, timestamp, branch, xunit_xml_path):
+    if not os.path.exists(xunit_xml_path):
+        raise FatalError("Unable to find xunit xml at {}".format(xunit_xml_path))
+
     benchview_tools_dir = os.path.join(tools_dir, 'Microsoft.BenchView.JSONFormat', 'tools')
-    with PushDir('C:\\test'):
-        RunCommand(['py', '-3', os.path.join(benchview_tools_dir, 'submission-metadata.py'), '--name', 'dotnet cli rolling perf {}'.format(commit), '--user-email', 'jsokla@microsoft.com'])
-        RunCommand(['py', '-3', os.path.join(benchview_tools_dir, 'build.py'), '--branch', branch, '--number', commit,'--source-timestamp', timestamp, '--repository', cli_repo.url, '--type', 'rolling'])
-        RunCommand(['py', '-3', os.path.join(benchview_tools_dir, 'machinedata.py')])
-        # measurement.py isn't returning a failing error code
-        # RunCommand(['py', '-3', os.path.join(benchview_tools_dir, 'measurement.py'), 'xunit', 'FILENAME', '--better', 'desc', '--drop-first-value'])
-        # RunCommand(['py', '-3', os.path.join(benchview_tools_dir, 'submission.py'), 
-        #                                                                 'measurement.json', 
-        #                                                                 '--build', 'build.json', 
-        #                                                                 '--machine-data', 'machinedata.json', 
-        #                                                                 '--metadata', 'submission-metadata.json', 
-        #                                                                 '--group', 'dotnet cli', 
-        #                                                                 '--type', 'rolling', 
-        #                                                                 '--config-name', 'Release', 
-        #                                                                 '--config', 'csc', '/o', 
-        #                                                                 '--architecture', 'amd64', 
-        #                                                                 '--machinepool', 'perfsnake'
-        # ])
+
+    job_benchview_dir = os.path.join(benchview_dir, commit)
+    if os.path.exists(job_benchview_dir):
+        shutil.rmtree(job_benchview_dir)
+    
+    os.makedirs(job_benchview_dir)
+
+    with PushDir(job_benchview_dir):
+        RunCommand(['py', os.path.join(benchview_tools_dir, 'submission-metadata.py'), '--name', 'dotnet cli rolling perf {}'.format(commit), '--user-email', 'johndoe@microsoft.com'])
+        RunCommand(['py', os.path.join(benchview_tools_dir, 'build.py'), '--branch', branch, '--number', commit,'--source-timestamp', timestamp, '--repository', cli_repo.url, '--type', 'rolling'])
+        RunCommand(['py', os.path.join(benchview_tools_dir, 'machinedata.py')])
+        RunCommand(['py', os.path.join(benchview_tools_dir, 'measurement.py'), 'xunit', xunit_xml_path, '--better', 'desc', '--drop-first-value'])
+        RunCommand(['py', os.path.join(benchview_tools_dir, 'submission.py'), 
+                                                                        'measurement.json', 
+                                                                        '--build', 'build.json', 
+                                                                        '--machine-data', 'machinedata.json', 
+                                                                        '--metadata', 'submission-metadata.json', 
+                                                                        '--group', 'dotnet cli', 
+                                                                        '--type', 'rolling', 
+                                                                        '--config-name', 'Release', 
+                                                                        '--config', 'csc', '/o', 
+                                                                        '--architecture', 'amd64', 
+                                                                        '--machinepool', 'perfsnake'
+        ])
+        RunCommand(['py', os.path.join(benchview_tools_dir, 'upload.py'), 
+                                                                        'submission.json', 
+                                                                        '--container', 'dotnetcli', 
+                                                                        '--sas-token', os.environ['SAS_TOKEN']
+                                                                        ])
 
 def main():
     try:
@@ -376,7 +398,8 @@ def main():
             if not check_history(latest_sha1):
                 logging.getLogger('script').info("Commit {} ({}) is new, kicking off submission...".format(latest_sha1, latest_timestamp))
                 submission = process_submission(latest_sha1)
-                upload_to_benchview(latest_sha1, latest_timestamp, script_args.branch, submission)
+                xunit_xml_path = os.path.join(results_dir, 'new', latest_sha1, '{}.test.xml'.format(latest_sha1))
+                upload_to_benchview(latest_sha1, latest_timestamp, script_args.branch, xunit_xml_path)
                 commit_to_history(latest_sha1, submission)
                 break
             else:
@@ -385,7 +408,7 @@ def main():
                 cli_repo.rewind()
 
     except FatalError as e:
-        logging.getLogger('script').error(e.message)
+        logging.getLogger('script').error(str(e))
         return 1
 
     except Exception as e:
