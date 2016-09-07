@@ -257,7 +257,7 @@ def check_dependencies():
         RunCommand(['msbuild', '-version'])
     except:
         raise FatalError("Can't find msbuild, please make sure it's installed and on PATH")
-    
+
     logging.getLogger('script').info("Making sure nuget exists...")
     try:
         RunCommand(['nuget'])
@@ -353,29 +353,42 @@ def upload_to_benchview(commit, timestamp, branch, xunit_xml_path):
     job_benchview_dir = os.path.join(benchview_dir, commit)
     if os.path.exists(job_benchview_dir):
         shutil.rmtree(job_benchview_dir)
-    
+
     os.makedirs(job_benchview_dir)
 
     with PushDir(job_benchview_dir):
-        RunCommand(['py', os.path.join(benchview_tools_dir, 'submission-metadata.py'), '--name', 'dotnet cli rolling perf {}'.format(commit), '--user-email', 'johndoe@microsoft.com'])
-        RunCommand(['py', os.path.join(benchview_tools_dir, 'build.py'), '--branch', branch, '--number', commit,'--source-timestamp', timestamp, '--repository', cli_repo.url, '--type', 'rolling'])
+        RunCommand(['py', os.path.join(benchview_tools_dir, 'submission-metadata.py'),
+                                                                        '--name', 'dotnet cli rolling perf {}'.format(commit),
+                                                                        '--user-email', 'johndoe@microsoft.com'
+                                                                        ])
+        RunCommand(['py', os.path.join(benchview_tools_dir, 'build.py'),
+                                                                        '--branch', branch,
+                                                                        '--number', commit,
+                                                                        '--source-timestamp', timestamp,
+                                                                        '--repository', cli_repo.url,
+                                                                        '--type', 'rolling'
+                                                                        ])
         RunCommand(['py', os.path.join(benchview_tools_dir, 'machinedata.py')])
-        RunCommand(['py', os.path.join(benchview_tools_dir, 'measurement.py'), 'xunit', xunit_xml_path, '--better', 'desc', '--drop-first-value'])
-        RunCommand(['py', os.path.join(benchview_tools_dir, 'submission.py'), 
-                                                                        'measurement.json', 
-                                                                        '--build', 'build.json', 
-                                                                        '--machine-data', 'machinedata.json', 
-                                                                        '--metadata', 'submission-metadata.json', 
-                                                                        '--group', 'dotnet cli', 
-                                                                        '--type', 'rolling', 
-                                                                        '--config-name', 'Release', 
-                                                                        '--config', 'csc', '/o', 
-                                                                        '--architecture', 'amd64', 
+        RunCommand(['py', os.path.join(benchview_tools_dir, 'measurement.py'),
+                                                                        'xunit', xunit_xml_path,
+                                                                        '--better', 'desc',
+                                                                        '--drop-first-value'
+                                                                        ])
+        RunCommand(['py', os.path.join(benchview_tools_dir, 'submission.py'),
+                                                                        'measurement.json',
+                                                                        '--build', 'build.json',
+                                                                        '--machine-data', 'machinedata.json',
+                                                                        '--metadata', 'submission-metadata.json',
+                                                                        '--group', 'dotnet cli',
+                                                                        '--type', 'rolling',
+                                                                        '--config-name', 'Release',
+                                                                        '--config', 'csc', '/o',
+                                                                        '--architecture', 'amd64',
                                                                         '--machinepool', 'perfsnake'
-        ])
-        RunCommand(['py', os.path.join(benchview_tools_dir, 'upload.py'), 
-                                                                        'submission.json', 
-                                                                        '--container', 'dotnetcli', 
+                                                                        ])
+        RunCommand(['py', os.path.join(benchview_tools_dir, 'upload.py'),
+                                                                        'submission.json',
+                                                                        '--container', 'dotnetcli',
                                                                         '--sas-token', os.environ['SAS_TOKEN']
                                                                         ])
 
