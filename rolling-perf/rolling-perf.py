@@ -359,7 +359,7 @@ def upload_to_benchview(commit, timestamp, branch, xunit_xml_path):
     with PushDir(job_benchview_dir):
         RunCommand(['py', os.path.join(benchview_tools_dir, 'submission-metadata.py'),
                                                                         '--name', 'dotnet cli rolling perf {}'.format(commit),
-                                                                        '--user-email', 'benchview@microsoft.com'
+                                                                        '--user-email', 'clrpfdev@microsoft.com'
                                                                         ])
         RunCommand(['py', os.path.join(benchview_tools_dir, 'build.py'),
                                                                         '--branch', branch,
@@ -383,7 +383,7 @@ def upload_to_benchview(commit, timestamp, branch, xunit_xml_path):
                                                                         '--group', 'dotnet cli',
                                                                         '--type', 'rolling',
                                                                         '--config-name', 'Release',
-                                                                        '--config', 'csc', '/o',
+                                                                        '--config', 'configuration', 'Release',
                                                                         '--architecture', 'amd64',
                                                                         '--machinepool', 'perfsnake',
                                                                         '--outfile', submission_json
